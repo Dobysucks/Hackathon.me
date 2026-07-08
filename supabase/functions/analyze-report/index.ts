@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const GEMINI_MODEL = "gemini-2.0-flash";
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const MODEL = "llama-3.2-11b-vision-preview";
+const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
 const SYSTEM_PROMPT = `You are a medical report assistant that helps patients understand their lab reports in plain, simple English.
 
@@ -65,46 +65,47 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    const apiKey = Deno.env.get("GROQ_API_KEY");
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "Gemini API key is not configured." }),
+        JSON.stringify({ error: "Groq API key is not configured." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const detectedType = mimeType || "image/jpeg";
+    const dataUrl = `data:${detectedType};base64,${image}`;
 
     const payload = {
-      contents: [
+      model: MODEL,
+      messages: [
         {
           role: "user",
-          parts: [
-            { text: SYSTEM_PROMPT },
-            { inline_data: { mime_type: detectedType, data: image } },
+          content: [
+            { type: "text", text: SYSTEM_PROMPT },
+            { type: "image_url", image_url: { url: dataUrl } },
           ],
         },
       ],
-      generationConfig: {
-        temperature: 0.4,
-        topP: 0.9,
-        maxOutputTokens: 2048,
-        responseMimeType: "application/json",
-      },
+      max_tokens: 2048,
+      temperature: 0.4,
     };
 
-    const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+    const response = await fetch(GROQ_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("Gemini API error:", response.status, errText);
+      console.error("Groq error:", response.status, errText);
       return new Response(
         JSON.stringify({
-          error: `Gemini API returned status ${response.status}.`,
+          error: `Groq returned status ${response.status}.`,
           details: errText,
         }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -112,11 +113,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const data = await response.json();
-    const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const textContent = data?.choices?.[0]?.message?.content;
 
     if (!textContent) {
       return new Response(
-        JSON.stringify({ error: "Gemini returned no content." }),
+        JSON.stringify({ error: "Groq returned no content." }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
