@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const MODEL = "google/gemma-4-26b-a4b-it:free";
-const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
+const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const SYSTEM_PROMPT = `You are a medical report assistant that helps patients understand their lab reports in plain, simple English.
 
@@ -65,49 +65,46 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const apiKey = Deno.env.get("OPENROUTER_API_KEY");
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "OpenRouter API key is not configured." }),
+        JSON.stringify({ error: "Gemini API key is not configured." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const detectedType = mimeType || "image/jpeg";
-    const dataUrl = `data:${detectedType};base64,${image}`;
 
     const payload = {
-      model: MODEL,
-      messages: [
+      contents: [
         {
           role: "user",
-          content: [
-            { type: "text", text: SYSTEM_PROMPT },
-            { type: "image_url", image_url: { url: dataUrl } },
+          parts: [
+            { text: SYSTEM_PROMPT },
+            { inline_data: { mime_type: detectedType, data: image } },
           ],
         },
       ],
-      max_tokens: 2048,
-      temperature: 0.4,
+      generationConfig: {
+        temperature: 0.4,
+        topP: 0.9,
+        maxOutputTokens: 2048,
+        responseMimeType: "application/json",
+      },
     };
 
-    const response = await fetch(OPENROUTER_ENDPOINT, {
+    const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://mediexplain.app",
-        "X-Title": "MediExplain",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("OpenRouter error:", response.status, errText);
+      console.error("Gemini API error:", response.status, errText);
       return new Response(
         JSON.stringify({
-          error: `OpenRouter returned status ${response.status}.`,
+          error: `Gemini API returned status ${response.status}.`,
           details: errText,
         }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -115,11 +112,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const data = await response.json();
-    const textContent = data?.choices?.[0]?.message?.content;
+    const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!textContent) {
       return new Response(
-        JSON.stringify({ error: "Claude returned no content." }),
+        JSON.stringify({ error: "Gemini returned no content." }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
