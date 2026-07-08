@@ -90,12 +90,21 @@ async function callGroq(apiKey: string, messages: unknown[]): Promise<string> {
 }
 
 function parseJSON(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-    return JSON.parse(cleaned);
+  // 1. Try raw parse first
+  try { return JSON.parse(text); } catch { /* continue */ }
+
+  // 2. Strip markdown code fences
+  const stripped = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+  try { return JSON.parse(stripped); } catch { /* continue */ }
+
+  // 3. Extract the outermost {...} block (handles conversational preamble/postamble)
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    return JSON.parse(text.slice(start, end + 1));
   }
+
+  throw new Error("Could not parse JSON from model response.");
 }
 
 Deno.serve(async (req: Request) => {
@@ -127,15 +136,13 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Missing 'content' or 'language' for translation." }, 400);
       }
 
-      const prompt = `You are a medical translator. Translate the following JSON from English to ${language}.
+      const prompt = `Translate the JSON below from English to ${language}. Output ONLY the translated JSON object — no explanation, no markdown, no code fences, no extra text before or after.
 
 Rules:
-- Keep the EXACT JSON structure — do not add or remove any keys.
-- Translate ONLY these text values: summary, classifiedFindings[].text, keyFindings[], abnormalValues[].note, questions[], riskExplanation.
-- Do NOT translate: test names, values, ranges, or any enum string ("high","low","normal","monitor","attention","moderate").
-- Return ONLY valid JSON, no markdown, no code fences, no extra text.
+- Keep the EXACT JSON structure and all keys unchanged.
+- Translate ONLY these string values: summary, classifiedFindings[].text, keyFindings[], abnormalValues[].note, questions[], riskExplanation.
+- Do NOT translate: test names (abnormalValues[].test), values, ranges, or enum strings ("high","low","normal","monitor","attention","moderate").
 
-JSON to translate:
 ${JSON.stringify(content)}`;
 
       const translated = await callGroq(apiKey, [{ role: "user", content: prompt }]);
