@@ -9,136 +9,164 @@ const corsHeaders = {
 const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
-const SYSTEM_PROMPT = `You are a medical report assistant that helps patients understand their lab reports in plain, simple English.
+const ANALYZE_PROMPT = `You are a medical report assistant that helps patients understand their lab reports in plain, simple English.
 
 You will receive an image of a medical report. Your job:
 1. Extract and read all text from the image (OCR).
 2. Explain the report in simple English that a non-medical person can understand.
 3. Identify any abnormal values (values outside the normal reference range shown on the report).
-4. Generate practical questions the patient should ask their doctor.
+4. Classify each key finding by severity.
+5. Assess the overall health risk level.
+6. Generate practical questions the patient should ask their doctor.
 
 You MUST respond with ONLY valid JSON in this exact schema (no markdown, no code fences, no extra text):
 
 {
   "summary": "A clear 2-4 sentence plain-English summary of the overall report.",
   "keyFindings": ["Short bullet point findings, 3-6 items"],
+  "classifiedFindings": [
+    {
+      "text": "Plain-English description of this finding",
+      "severity": "normal"
+    }
+  ],
   "abnormalValues": [
     {
       "test": "Name of the test",
       "value": "The patient's value with units",
       "range": "The normal reference range from the report",
-      "status": "high" or "low",
+      "status": "high",
       "note": "A simple explanation of what this means"
     }
   ],
-  "questions": ["Specific questions to ask a doctor, 3-5 items"]
+  "questions": ["Specific questions to ask a doctor, 3-5 items"],
+  "riskLevel": "low",
+  "riskExplanation": "One sentence explaining the overall risk level."
 }
 
-Rules:
-- If you cannot read the image clearly, return: {"summary": "Could not read the report clearly.", "keyFindings": [], "abnormalValues": [], "questions": []}
-- "status" must be exactly "high" or "low" (lowercase).
-- If there are no abnormal values, return an empty array for "abnormalValues".
-- Keep all language simple and non-technical. Avoid jargon.
-- Do NOT include a disclaimer in the JSON; the frontend handles that.
+Rules for classifiedFindings:
+- Include 3-6 findings total, most important first.
+- severity must be exactly one of: "normal", "monitor", "attention"
+  - "normal": value is within healthy range
+  - "monitor": slightly outside range or borderline — worth watching
+  - "attention": significantly abnormal — needs prompt medical attention
+
+Rules for riskLevel:
+- "low": 0-1 minor abnormalities, nothing critical
+- "moderate": 1-2 abnormalities or one moderate deviation
+- "high": 3+ abnormalities OR any critically abnormal value
+
+Other rules:
+- If you cannot read the image clearly, return: {"summary":"Could not read the report clearly.","keyFindings":[],"classifiedFindings":[],"abnormalValues":[],"questions":[],"riskLevel":"low","riskExplanation":"Unable to assess risk — report could not be read."}
+- "status" in abnormalValues must be exactly "high" or "low".
+- Keep all language simple and non-technical.
+- Do NOT include a disclaimer in the JSON.
 - Do NOT include any text outside the JSON object.`;
+
+async function callGroq(apiKey: string, messages: unknown[]): Promise<string> {
+  const response = await fetch(GROQ_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      max_tokens: 2048,
+      temperature: 0.4,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Groq returned status ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Groq returned no content.");
+  return content;
+}
+
+function parseJSON(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+    return JSON.parse(cleaned);
+  }
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   try {
     if (req.method !== "POST") {
-      return new Response(
-        JSON.stringify({ error: "Method not allowed. Use POST." }),
-        { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const body = await req.json();
-    const { image, mimeType } = body;
-
-    if (!image || typeof image !== "string") {
-      return new Response(
-        JSON.stringify({ error: "Missing 'image' field (base64 string expected)." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ error: "Method not allowed. Use POST." }, 405);
     }
 
     const apiKey = Deno.env.get("GROQ_API_KEY");
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: "Groq API key is not configured." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!apiKey) return json({ error: "Groq API key is not configured." }, 500);
+
+    const body = await req.json();
+    const action = body.action ?? "analyze";
+
+    // ── TRANSLATE ────────────────────────────────────────────────────────────
+    if (action === "translate") {
+      const { content, language } = body;
+      if (!content || !language) {
+        return json({ error: "Missing 'content' or 'language' for translation." }, 400);
+      }
+
+      const prompt = `You are a medical translator. Translate the following JSON from English to ${language}.
+
+Rules:
+- Keep the EXACT JSON structure — do not add or remove any keys.
+- Translate ONLY these text values: summary, classifiedFindings[].text, keyFindings[], abnormalValues[].note, questions[], riskExplanation.
+- Do NOT translate: test names, values, ranges, or any enum string ("high","low","normal","monitor","attention","moderate").
+- Return ONLY valid JSON, no markdown, no code fences, no extra text.
+
+JSON to translate:
+${JSON.stringify(content)}`;
+
+      const translated = await callGroq(apiKey, [{ role: "user", content: prompt }]);
+      const parsed = parseJSON(translated);
+      return json(parsed);
+    }
+
+    // ── ANALYZE ──────────────────────────────────────────────────────────────
+    const { image, mimeType } = body;
+    if (!image || typeof image !== "string") {
+      return json({ error: "Missing 'image' field (base64 string expected)." }, 400);
     }
 
     const detectedType = mimeType || "image/jpeg";
     const dataUrl = `data:${detectedType};base64,${image}`;
 
-    const payload = {
-      model: MODEL,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: SYSTEM_PROMPT },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ],
-        },
-      ],
-      max_tokens: 2048,
-      temperature: 0.4,
-    };
-
-    const response = await fetch(GROQ_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+    const text = await callGroq(apiKey, [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: ANALYZE_PROMPT },
+          { type: "image_url", image_url: { url: dataUrl } },
+        ],
       },
-      body: JSON.stringify(payload),
-    });
+    ]);
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Groq error:", response.status, errText);
-      return new Response(
-        JSON.stringify({
-          error: `Groq returned status ${response.status}.`,
-          details: errText,
-        }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const parsed = parseJSON(text);
+    return json(parsed);
 
-    const data = await response.json();
-    const textContent = data?.choices?.[0]?.message?.content;
-
-    if (!textContent) {
-      return new Response(
-        JSON.stringify({ error: "Groq returned no content." }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    let parsed;
-    try {
-      parsed = JSON.parse(textContent);
-    } catch {
-      const cleaned = textContent.replace(/```json/gi, "").replace(/```/g, "").trim();
-      parsed = JSON.parse(cleaned);
-    }
-
-    return new Response(JSON.stringify(parsed), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   } catch (err) {
     console.error("Edge function error:", err);
-    return new Response(
-      JSON.stringify({ error: "An unexpected error occurred.", details: String(err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return json({ error: "An unexpected error occurred.", details: String(err) }, 500);
   }
 });
