@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const MODEL = "llama-3.2-11b-vision-preview";
+const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
 const SYSTEM_PROMPT = `You are a medical report assistant that helps patients understand their lab reports in plain, simple English.
