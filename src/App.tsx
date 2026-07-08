@@ -93,6 +93,13 @@ export default function App() {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !anonKey) {
+        throw new Error(
+          'The analysis service is not configured yet. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.'
+        );
+      }
+
       const endpoint = `${supabaseUrl}/functions/v1/analyze-report`;
 
       const response = await fetch(endpoint, {
@@ -128,11 +135,13 @@ export default function App() {
         summary: data.summary,
         keyFindings: Array.isArray(data.keyFindings) ? data.keyFindings : [],
         abnormalValues: Array.isArray(data.abnormalValues)
-          ? data.abnormalValues.map((v: Record<string, string>) => ({
+          ? data.abnormalValues
+              .filter((v: Record<string, string>) => v.status === 'high' || v.status === 'low')
+              .map((v: Record<string, string>) => ({
               test: String(v.test ?? ''),
               value: String(v.value ?? ''),
               range: String(v.range ?? ''),
-              status: v.status === 'high' ? 'high' : 'low',
+              status: v.status as 'high' | 'low',
               note: String(v.note ?? ''),
             }))
           : [],
