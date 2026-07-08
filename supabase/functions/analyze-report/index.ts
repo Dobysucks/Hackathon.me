@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const MODEL = "anthropic/claude-sonnet-4-5";
+const MODEL = "google/gemma-4-26b-a4b-it:free";
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
 const SYSTEM_PROMPT = `You are a medical report assistant that helps patients understand their lab reports in plain, simple English.
