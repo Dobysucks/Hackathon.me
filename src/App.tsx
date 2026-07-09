@@ -28,6 +28,8 @@ import { AnnotatedText } from './components/AnnotatedText';
 import { TermModal } from './components/TermModal';
 import { SourcesSection } from './components/SourcesSection';
 import type { MedicalTerm } from './data/medicalTerms';
+import { UI } from './i18n';
+import type { Language } from './i18n';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,11 +108,18 @@ function normalizeResult(data: Record<string, unknown>): AnalysisResult {
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
-function HealthRiskCard({ level, explanation }: { level: AnalysisResult['riskLevel']; explanation: string }) {
+function HealthRiskCard({
+  level, explanation, riskLabel, healthRiskLabel,
+}: {
+  level: AnalysisResult['riskLevel'];
+  explanation: string;
+  riskLabel: string;
+  healthRiskLabel: string;
+}) {
   const config = {
-    low:      { bg: 'bg-emerald-50 dark:bg-emerald-900/15', border: 'border-emerald-200 dark:border-emerald-800/40', icon: ShieldCheck, iconColor: 'text-emerald-500 dark:text-emerald-400', badgeBg: 'bg-emerald-100 dark:bg-emerald-900/40', badgeText: 'text-emerald-700 dark:text-emerald-300', label: 'Low Risk' },
-    moderate: { bg: 'bg-amber-50 dark:bg-amber-900/15',   border: 'border-amber-200 dark:border-amber-800/40',   icon: ShieldAlert, iconColor: 'text-amber-500 dark:text-amber-400',   badgeBg: 'bg-amber-100 dark:bg-amber-900/40',   badgeText: 'text-amber-700 dark:text-amber-300',   label: 'Moderate Risk' },
-    high:     { bg: 'bg-red-50 dark:bg-red-900/15',     border: 'border-red-200 dark:border-red-800/40',     icon: ShieldX,     iconColor: 'text-red-500 dark:text-red-400',     badgeBg: 'bg-red-100 dark:bg-red-900/40',     badgeText: 'text-red-700 dark:text-red-300',     label: 'High Risk' },
+    low:      { bg: 'bg-emerald-50 dark:bg-emerald-900/15', border: 'border-emerald-200 dark:border-emerald-800/40', icon: ShieldCheck, iconColor: 'text-emerald-500 dark:text-emerald-400', badgeBg: 'bg-emerald-100 dark:bg-emerald-900/40', badgeText: 'text-emerald-700 dark:text-emerald-300' },
+    moderate: { bg: 'bg-amber-50 dark:bg-amber-900/15',   border: 'border-amber-200 dark:border-amber-800/40',   icon: ShieldAlert, iconColor: 'text-amber-500 dark:text-amber-400',   badgeBg: 'bg-amber-100 dark:bg-amber-900/40',   badgeText: 'text-amber-700 dark:text-amber-300' },
+    high:     { bg: 'bg-red-50 dark:bg-red-900/15',     border: 'border-red-200 dark:border-red-800/40',     icon: ShieldX,     iconColor: 'text-red-500 dark:text-red-400',     badgeBg: 'bg-red-100 dark:bg-red-900/40',     badgeText: 'text-red-700 dark:text-red-300' },
   }[level];
   const Icon = config.icon;
 
@@ -121,9 +130,9 @@ function HealthRiskCard({ level, explanation }: { level: AnalysisResult['riskLev
           <Icon className="w-5 h-5" strokeWidth={2} />
         </div>
         <div>
-          <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Health Risk</p>
+          <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">{healthRiskLabel}</p>
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-bold ${config.badgeBg} ${config.badgeText}`}>
-            {config.label}
+            {riskLabel}
           </span>
         </div>
       </div>
@@ -135,17 +144,18 @@ function HealthRiskCard({ level, explanation }: { level: AnalysisResult['riskLev
 }
 
 function FindingCard({
-  finding, index, onTermClick, onTermsFound,
+  finding, index, onTermClick, onTermsFound, severityLabels,
 }: {
   finding: ClassifiedFinding;
   index: number;
   onTermClick: (term: MedicalTerm) => void;
   onTermsFound?: (terms: MedicalTerm[]) => void;
+  severityLabels: { normal: string; monitor: string; attention: string };
 }) {
   const config = {
-    normal:    { dot: 'bg-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/15',  border: 'border-emerald-100 dark:border-emerald-800/40', text: 'text-emerald-700', badge: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300', label: 'Normal'  },
-    monitor:   { dot: 'bg-amber-400',   bg: 'bg-amber-50 dark:bg-amber-900/15',   border: 'border-amber-100 dark:border-amber-800/40',   text: 'text-amber-700',   badge: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',   label: 'Monitor'  },
-    attention: { dot: 'bg-red-400',     bg: 'bg-red-50 dark:bg-red-900/15',     border: 'border-red-100 dark:border-red-800/40',     text: 'text-red-700',     badge: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',     label: 'Attention'  },
+    normal:    { dot: 'bg-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/15',  border: 'border-emerald-100 dark:border-emerald-800/40', text: 'text-emerald-700', badge: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300', label: severityLabels.normal    },
+    monitor:   { dot: 'bg-amber-400',   bg: 'bg-amber-50 dark:bg-amber-900/15',   border: 'border-amber-100 dark:border-amber-800/40',   text: 'text-amber-700',   badge: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',   label: severityLabels.monitor   },
+    attention: { dot: 'bg-red-400',     bg: 'bg-red-50 dark:bg-red-900/15',     border: 'border-red-100 dark:border-red-800/40',     text: 'text-red-700',     badge: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',     label: severityLabels.attention },
   }[finding.severity];
 
   return (
@@ -168,15 +178,17 @@ function LanguageSelector({
   language,
   onChange,
   isTranslating,
+  label,
 }: {
   language: Language;
   onChange: (lang: Language) => void;
   isTranslating: boolean;
+  label: string;
 }) {
   return (
     <div className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-slate-800 border border-pink-100 dark:border-slate-700 shadow-soft animate-fade-in-up">
       <Globe className="w-4 h-4 text-brand-500 shrink-0" />
-      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Language</span>
+      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">{label}</span>
       <div className="flex gap-1.5 ml-auto flex-wrap justify-end">
         {LANGUAGES.map(lang => (
           <button
@@ -238,6 +250,9 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Derived UI strings for the current language
+  const t = UI[language];
+
   const displayResult = language === 'en' ? result : (translations[language] ?? result);
 
   // Translate when language changes (if not already cached)
@@ -295,11 +310,11 @@ export default function App() {
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file (JPG, PNG, or PDF screenshot).');
+      setError(UI[language].error_image_type);
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError('Image is too large. Please upload a file under 10 MB.');
+      setError(UI[language].error_image_size);
       return;
     }
     setError(null);
@@ -314,7 +329,7 @@ export default function App() {
     };
     reader.readAsDataURL(file);
     setFileName(file.name);
-  }, []);
+  }, [language]);
 
   const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -334,7 +349,6 @@ export default function App() {
     setResult(null);
     setError(null);
     setTranslations({});
-    setLanguage('en');
     setReferencedTerms(new Map());
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -351,7 +365,7 @@ export default function App() {
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
       if (!supabaseUrl || !anonKey) {
-        throw new Error('The analysis service is not configured yet. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+        throw new Error(t.error_not_configured);
       }
 
       const endpoint = `${supabaseUrl}/functions/v1/analyze-report`;
@@ -369,12 +383,12 @@ export default function App() {
 
       const data = await response.json();
       if (!data || typeof data.summary !== 'string') {
-        throw new Error('Received an invalid response from the analysis service.');
+        throw new Error(t.error_invalid_response);
       }
 
       setResult(normalizeResult(data as Record<string, unknown>));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong while analyzing your report. Please try again.');
+      setError(err instanceof Error ? err.message : t.error_generic);
     } finally {
       setIsAnalyzing(false);
     }
@@ -393,7 +407,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-none tracking-tight">MediExplain</h1>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">Understand your report</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">{t.header_subtitle}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -403,7 +417,7 @@ export default function App() {
                 className="flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-pink-50 dark:hover:bg-slate-800"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span className="hidden sm:inline">Start over</span>
+                <span className="hidden sm:inline">{t.start_over}</span>
               </button>
             )}
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
@@ -418,17 +432,13 @@ export default function App() {
           <div className="text-center mb-6 animate-fade-in-up">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 dark:bg-brand-900/30 border border-brand-100 dark:border-brand-800/50 text-brand-700 dark:text-brand-300 text-xs font-semibold mb-4">
               <Sparkles className="w-3.5 h-3.5" />
-              AI-assisted medical imaging
+              {t.badge}
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2">
-              {reportType === 'xray'
-                ? <>Understand your X-ray<br className="hidden sm:block" /> in plain language</>
-                : <>Understand your lab report<br className="hidden sm:block" /> in plain language</>}
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2 whitespace-pre-line">
+              {reportType === 'xray' ? t.heading_xray : t.heading_lab}
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base leading-relaxed max-w-md mx-auto">
-              {reportType === 'xray'
-                ? "Upload an X-ray image and get a plain-language explanation of what\u2019s visible, areas of concern, and questions to ask your doctor."
-                : 'Upload a photo of your lab report and get a clear summary, flagged values, and questions to bring to your doctor.'}
+              {reportType === 'xray' ? t.desc_xray : t.desc_lab}
             </p>
           </div>
         )}
@@ -452,7 +462,7 @@ export default function App() {
                   {rt.type === 'lab'
                     ? <FlaskConical className="w-4 h-4 shrink-0" />
                     : <ScanLine className="w-4 h-4 shrink-0" />}
-                  <span>{rt.label}</span>
+                  <span>{rt.type === 'lab' ? t.toggle_lab : t.toggle_xray}</span>
                 </button>
               ))}
             </div>
@@ -473,18 +483,18 @@ export default function App() {
                   : <Upload className="w-7 h-7 text-brand-600 dark:text-brand-300" strokeWidth={2} />}
               </div>
               <p className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-1">
-                {reportType === 'xray' ? 'Tap to upload your X-ray' : 'Tap to upload your report'}
+                {reportType === 'xray' ? t.upload_xray : t.upload_lab}
               </p>
-              <p className="text-sm text-slate-400 dark:text-slate-500">or drag and drop an image here</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">JPG, PNG · up to 10 MB</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">{t.drag_drop}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">{t.file_hint}</p>
             </button>
             {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400 text-center animate-fade-in">{error}</p>}
 
             <div className="grid grid-cols-3 gap-3 mt-4">
               {[
-                { icon: ShieldAlert, label: 'Private & secure' },
-                { icon: Activity, label: 'Instant analysis' },
-                { icon: ClipboardList, label: 'Plain language' },
+                { icon: ShieldAlert, label: t.badge_private },
+                { icon: Activity, label: t.badge_instant },
+                { icon: ClipboardList, label: t.badge_plain },
               ].map((b, i) => (
                 <div
                   key={i}
@@ -499,7 +509,7 @@ export default function App() {
 
             {/* Language selector on home page */}
             <div className="mt-4 animate-fade-in-up" style={{ animationDelay: '0.28s' }}>
-              <LanguageSelector language={language} onChange={setLanguage} isTranslating={false} />
+              <LanguageSelector language={language} onChange={setLanguage} isTranslating={false} label={t.lang_label} />
             </div>
           </div>
         )}
@@ -518,7 +528,7 @@ export default function App() {
               <img src={image} alt="Medical report preview" className="w-full max-h-[420px] object-contain bg-slate-50 dark:bg-slate-900" />
               <div className="px-4 py-3 border-t border-pink-50 dark:border-slate-700 flex items-center gap-2">
                 <FileImage className="w-4 h-4 text-brand-500 dark:text-brand-300 shrink-0" />
-                <span className="text-sm text-slate-600 dark:text-slate-300 font-medium truncate">{fileName || 'Uploaded report'}</span>
+                <span className="text-sm text-slate-600 dark:text-slate-300 font-medium truncate">{fileName || t.file_name_fallback}</span>
               </div>
             </div>
 
@@ -535,22 +545,19 @@ export default function App() {
                     <span className="animate-pulse-ring absolute inline-flex h-full w-full rounded-full bg-white/40" />
                     <span className="relative inline-flex w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                   </span>
-                  {reportType === 'xray' ? 'Analyzing your X-ray…' : 'Analyzing your report…'}
+                  {reportType === 'xray' ? t.analyzing_xray : t.analyzing_lab}
                 </>
               ) : (
                 <>
                   {reportType === 'xray' ? <ScanLine className="w-5 h-5" /> : <Stethoscope className="w-5 h-5" />}
-                  {reportType === 'xray' ? 'Analyze X-Ray' : 'Analyze Report'}
+                  {reportType === 'xray' ? t.analyze_xray : t.analyze_lab}
                 </>
               )}
             </button>
 
             {isAnalyzing && (
               <div className="mt-6 space-y-3 animate-fade-in">
-                {(reportType === 'xray'
-                  ? ['Processing X-ray image', 'Sending to AI radiologist', 'Identifying areas of concern', 'Preparing your explanation']
-                  : ['Extracting text from image', 'Sending to AI for analysis', 'Identifying abnormal values', 'Preparing your summary']
-                ).map((step, i) => (
+                {(reportType === 'xray' ? t.steps_xray : t.steps_lab).map((step, i) => (
                   <div key={i} className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: `${i * 0.4}s` }}>
                     <div className="w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-900/50 flex items-center justify-center">
                       <CheckCircle2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-300" />
@@ -568,7 +575,7 @@ export default function App() {
                   <div>
                     <p className="text-sm font-medium text-red-700 dark:text-red-300">{error}</p>
                     <button onClick={analyze} className="mt-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline underline-offset-2">
-                      Try again
+                      {t.try_again}
                     </button>
                   </div>
                 </div>
@@ -585,10 +592,10 @@ export default function App() {
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-800 border border-pink-100 dark:border-slate-700 shadow-soft animate-fade-in-up">
               <img src={image} alt="Report" className="w-14 h-14 rounded-lg object-cover border border-pink-100 dark:border-slate-700 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{fileName || 'Your report'}</p>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{fileName || t.file_name_fallback}</p>
                 <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 mt-0.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Analysis complete
+                  {t.analysis_complete}
                 </p>
               </div>
               <button
@@ -596,58 +603,67 @@ export default function App() {
                 className="text-sm font-medium text-brand-600 dark:text-brand-300 hover:text-brand-700 dark:hover:text-brand-200 px-3 py-2 rounded-lg hover:bg-pink-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 shrink-0"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span className="hidden sm:inline">New report</span>
+                <span className="hidden sm:inline">{t.new_report}</span>
               </button>
             </div>
 
             {/* Language selector */}
-            <LanguageSelector language={language} onChange={setLanguage} isTranslating={isTranslating} />
+            <LanguageSelector language={language} onChange={setLanguage} isTranslating={isTranslating} label={t.lang_label} />
 
             {translateError && (
               <p className="text-xs text-red-500 dark:text-red-400 text-center animate-fade-in">{translateError}</p>
             )}
 
             {/* Health Risk */}
-            <HealthRiskCard level={displayResult.riskLevel} explanation={displayResult.riskExplanation} />
+            <HealthRiskCard
+              level={displayResult.riskLevel}
+              explanation={displayResult.riskExplanation}
+              healthRiskLabel={t.health_risk}
+              riskLabel={displayResult.riskLevel === 'low' ? t.risk_low : displayResult.riskLevel === 'moderate' ? t.risk_moderate : t.risk_high}
+            />
 
             {/* Key Findings */}
             {displayResult.classifiedFindings.length > 0 && (
-              <Section icon={<Sparkles className="w-5 h-5" />} title="Key Findings" number="1" delay={0.05}>
+              <Section icon={<Sparkles className="w-5 h-5" />} title={t.key_findings} number="1" delay={0.05}>
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {(['normal', 'monitor', 'attention'] as const).map(s => {
-                    const counts = { normal: '🟢 Normal', monitor: '🟡 Monitor', attention: '🔴 Attention' };
+                    const emoji = { normal: '🟢', monitor: '🟡', attention: '🔴' }[s];
+                    const label = { normal: t.severity_normal, monitor: t.severity_monitor, attention: t.severity_attention }[s];
                     const n = displayResult.classifiedFindings.filter(f => f.severity === s).length;
                     if (n === 0) return null;
                     return (
                       <span key={s} className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                        {counts[s]} · {n}
+                        {emoji} {label} · {n}
                       </span>
                     );
                   })}
                 </div>
                 <div className="space-y-2">
                   {displayResult.classifiedFindings.map((f, i) => (
-                    <FindingCard key={i} finding={f} index={i} onTermClick={setActiveTerm} onTermsFound={collectTerms} />
+                    <FindingCard
+                      key={i} finding={f} index={i} onTermClick={setActiveTerm} onTermsFound={collectTerms}
+                      severityLabels={{ normal: t.severity_normal, monitor: t.severity_monitor, attention: t.severity_attention }}
+                    />
                   ))}
                 </div>
               </Section>
             )}
 
             {/* Report Summary */}
-            <Section icon={<ClipboardList className="w-5 h-5" />} title="Report Summary" number="2" delay={0.08}>
+            <Section icon={<ClipboardList className="w-5 h-5" />} title={t.report_summary} number="2" delay={0.08}>
               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                 <AnnotatedText text={displayResult.summary} onTermClick={setActiveTerm} onTermsFound={collectTerms} />
               </p>
             </Section>
 
             {/* Abnormal Values */}
-            <Section icon={<Activity className="w-5 h-5" />} title="Abnormal Values" number="3" delay={0.11}>
+            <Section icon={<Activity className="w-5 h-5" />} title={t.abnormal_values} number="3" delay={0.11}>
               <div className="space-y-3">
                 {displayResult.abnormalValues.length === 0 && (
                   <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/40">
                     <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400 shrink-0" />
                     <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
-                      No abnormal values detected. All results appear within normal ranges.
+                      {t.no_abnormal}
                     </p>
                   </div>
                 )}
@@ -664,7 +680,7 @@ export default function App() {
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{v.test}</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Normal range: {v.range}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{t.normal_range} {v.range}</p>
                       </div>
                       <span
                         className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -684,8 +700,8 @@ export default function App() {
             </Section>
 
             {/* Questions */}
-            <Section icon={<HelpCircle className="w-5 h-5" />} title="Questions to Ask Your Doctor" number="4" delay={0.14}>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Bring these questions to your next appointment.</p>
+            <Section icon={<HelpCircle className="w-5 h-5" />} title={t.questions_title} number="4" delay={0.14}>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{t.questions_subtitle}</p>
               <div className="space-y-2.5">
                 {displayResult.questions.map((q, i) => (
                   <div
@@ -703,28 +719,28 @@ export default function App() {
             </Section>
 
             {/* Disclaimer */}
-            <Section icon={<ShieldAlert className="w-5 h-5" />} title="Disclaimer" number="5" delay={0.17} accent="amber">
+            <Section icon={<ShieldAlert className="w-5 h-5" />} title={t.disclaimer_title} number="5" delay={0.17} accent="amber">
               <div className="flex gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-2">
                   <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                    <strong className="text-slate-800 dark:text-slate-100">This is not a medical diagnosis. Please consult a healthcare professional.</strong>
+                    <strong className="text-slate-800 dark:text-slate-100">{t.disclaimer_1}</strong>
                   </p>
-                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                    MediExplain is an informational tool and <strong className="text-slate-700 dark:text-slate-200">not a medical device</strong>. It does not diagnose, treat, or replace professional medical advice.
-                  </p>
-                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                    The analysis is generated by AI for educational purposes and may contain errors. Always consult a licensed healthcare provider before making decisions about your health.
-                  </p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 pt-1">
-                    By using this tool you acknowledge that the output is not a substitute for professional medical evaluation.
-                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{t.disclaimer_2}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{t.disclaimer_3}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 pt-1">{t.disclaimer_4}</p>
                 </div>
               </div>
             </Section>
 
             {/* Sources */}
-            <SourcesSection terms={Array.from(referencedTerms.values())} />
+            <SourcesSection
+              terms={Array.from(referencedTerms.values())}
+              title={t.sources_title}
+              termsLabel={t.medical_terms_referenced}
+              noTermsText={t.no_terms}
+              disclaimerText={t.sources_disclaimer}
+            />
 
             {/* CTA */}
             <div className="pt-2 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
@@ -732,7 +748,7 @@ export default function App() {
                 onClick={reset}
                 className="w-full py-3.5 rounded-2xl border-2 border-brand-200 dark:border-brand-800/50 text-brand-700 dark:text-brand-300 font-semibold flex items-center justify-center gap-2 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors"
               >
-                Analyze another report
+                {t.analyze_another}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -748,7 +764,7 @@ export default function App() {
             <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">MediExplain</span>
           </div>
           <p className="text-xs text-slate-400 dark:text-slate-500 max-w-md mx-auto leading-relaxed">
-            This is not a medical diagnosis. Please consult a healthcare professional.
+            {t.footer_disclaimer}
           </p>
         </div>
       </footer>
