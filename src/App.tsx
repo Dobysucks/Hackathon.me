@@ -19,6 +19,8 @@ import {
   Globe,
   ShieldCheck,
   ShieldX,
+  ScanLine,
+  FlaskConical,
 } from 'lucide-react';
 import { useTheme } from './hooks/useTheme';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -53,6 +55,7 @@ type AnalysisResult = {
 };
 
 type Language = 'en' | 'hi' | 'ta';
+type ReportType = 'lab' | 'xray';
 
 const LANGUAGES: { code: Language; label: string; native: string }[] = [
   { code: 'en', label: 'English',  native: 'English' },
@@ -65,6 +68,11 @@ const LANGUAGE_NAMES: Record<Language, string> = {
   hi: 'Hindi',
   ta: 'Tamil',
 };
+
+const REPORT_TYPES: { type: ReportType; label: string; description: string }[] = [
+  { type: 'lab', label: 'Lab Report', description: 'Blood tests, urine, metabolic panels' },
+  { type: 'xray', label: 'X-Ray', description: 'Chest, bone, spine radiographs' },
+];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -207,6 +215,7 @@ export default function App() {
   const [translations, setTranslations] = useState<Partial<Record<Language, AnalysisResult>>>({});
   const [isTranslating, setIsTranslating] = useState(false);
   const [translateError, setTranslateError] = useState<string | null>(null);
+  const [reportType, setReportType] = useState<ReportType>('lab');
 
   const { theme, toggleTheme } = useTheme();
   const [activeTerm, setActiveTerm] = useState<MedicalTerm | null>(null);
@@ -300,7 +309,7 @@ export default function App() {
       setImage(e.target?.result as string);
       setResult(null);
       setTranslations({});
-      setLanguage('en');
+      // Preserve user's language selection from the home page
       setReferencedTerms(new Map());
     };
     reader.readAsDataURL(file);
@@ -349,7 +358,7 @@ export default function App() {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${anonKey}` },
-        body: JSON.stringify({ action: 'analyze', image: base64Data, mimeType: imageMimeType }),
+        body: JSON.stringify({ action: 'analyze', image: base64Data, mimeType: imageMimeType, reportType }),
       });
 
       if (!response.ok) {
@@ -406,17 +415,20 @@ export default function App() {
 
         {/* Hero */}
         {!image && (
-          <div className="text-center mb-8 animate-fade-in-up">
+          <div className="text-center mb-6 animate-fade-in-up">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 dark:bg-brand-900/30 border border-brand-100 dark:border-brand-800/50 text-brand-700 dark:text-brand-300 text-xs font-semibold mb-4">
               <Sparkles className="w-3.5 h-3.5" />
-              AI-assisted report reading
+              AI-assisted medical imaging
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2">
-              Understand your medical report
-              <br className="hidden sm:block" /> in plain language
+              {reportType === 'xray'
+                ? <>Understand your X-ray<br className="hidden sm:block" /> in plain language</>
+                : <>Understand your lab report<br className="hidden sm:block" /> in plain language</>}
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base leading-relaxed max-w-md mx-auto">
-              Upload a photo of your lab report and get a clear summary, flagged values, and questions to bring to your doctor.
+              {reportType === 'xray'
+                ? "Upload an X-ray image and get a plain-language explanation of what\u2019s visible, areas of concern, and questions to ask your doctor."
+                : 'Upload a photo of your lab report and get a clear summary, flagged values, and questions to bring to your doctor.'}
             </p>
           </div>
         )}
@@ -424,6 +436,27 @@ export default function App() {
         {/* Upload zone */}
         {!image && (
           <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+
+            {/* Report type toggle */}
+            <div className="flex gap-2 p-1 mb-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              {REPORT_TYPES.map(rt => (
+                <button
+                  key={rt.type}
+                  onClick={() => setReportType(rt.type)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all ${
+                    reportType === rt.type
+                      ? 'bg-white dark:bg-slate-700 text-brand-700 dark:text-brand-300 shadow-soft'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  {rt.type === 'lab'
+                    ? <FlaskConical className="w-4 h-4 shrink-0" />
+                    : <ScanLine className="w-4 h-4 shrink-0" />}
+                  <span>{rt.label}</span>
+                </button>
+              ))}
+            </div>
+
             <input ref={fileInputRef} type="file" accept="image/*" onChange={onFileSelect} className="hidden" />
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -435,15 +468,19 @@ export default function App() {
               }`}
             >
               <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-100 to-brand-200 dark:from-brand-900/50 dark:to-brand-800/50 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-300">
-                <Upload className="w-7 h-7 text-brand-600 dark:text-brand-300" strokeWidth={2} />
+                {reportType === 'xray'
+                  ? <ScanLine className="w-7 h-7 text-brand-600 dark:text-brand-300" strokeWidth={2} />
+                  : <Upload className="w-7 h-7 text-brand-600 dark:text-brand-300" strokeWidth={2} />}
               </div>
-              <p className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-1">Tap to upload your report</p>
+              <p className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-1">
+                {reportType === 'xray' ? 'Tap to upload your X-ray' : 'Tap to upload your report'}
+              </p>
               <p className="text-sm text-slate-400 dark:text-slate-500">or drag and drop an image here</p>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">JPG, PNG · up to 10 MB</p>
             </button>
             {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400 text-center animate-fade-in">{error}</p>}
 
-            <div className="grid grid-cols-3 gap-3 mt-6">
+            <div className="grid grid-cols-3 gap-3 mt-4">
               {[
                 { icon: ShieldAlert, label: 'Private & secure' },
                 { icon: Activity, label: 'Instant analysis' },
@@ -458,6 +495,11 @@ export default function App() {
                   <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-tight">{b.label}</span>
                 </div>
               ))}
+            </div>
+
+            {/* Language selector on home page */}
+            <div className="mt-4 animate-fade-in-up" style={{ animationDelay: '0.28s' }}>
+              <LanguageSelector language={language} onChange={setLanguage} isTranslating={false} />
             </div>
           </div>
         )}
@@ -493,19 +535,22 @@ export default function App() {
                     <span className="animate-pulse-ring absolute inline-flex h-full w-full rounded-full bg-white/40" />
                     <span className="relative inline-flex w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                   </span>
-                  Analyzing your report…
+                  {reportType === 'xray' ? 'Analyzing your X-ray…' : 'Analyzing your report…'}
                 </>
               ) : (
                 <>
-                  <Stethoscope className="w-5 h-5" />
-                  Analyze Report
+                  {reportType === 'xray' ? <ScanLine className="w-5 h-5" /> : <Stethoscope className="w-5 h-5" />}
+                  {reportType === 'xray' ? 'Analyze X-Ray' : 'Analyze Report'}
                 </>
               )}
             </button>
 
             {isAnalyzing && (
               <div className="mt-6 space-y-3 animate-fade-in">
-                {['Extracting text from image', 'Sending to AI for analysis', 'Identifying abnormal values', 'Preparing your summary'].map((step, i) => (
+                {(reportType === 'xray'
+                  ? ['Processing X-ray image', 'Sending to AI radiologist', 'Identifying areas of concern', 'Preparing your explanation']
+                  : ['Extracting text from image', 'Sending to AI for analysis', 'Identifying abnormal values', 'Preparing your summary']
+                ).map((step, i) => (
                   <div key={i} className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: `${i * 0.4}s` }}>
                     <div className="w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-900/50 flex items-center justify-center">
                       <CheckCircle2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-300" />

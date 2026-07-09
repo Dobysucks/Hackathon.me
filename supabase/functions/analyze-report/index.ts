@@ -9,6 +9,7 @@ const corsHeaders = {
 const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
+// ── Lab Report Prompt ─────────────────────────────────────────────────────────
 const ANALYZE_PROMPT = `You are a medical report assistant that helps patients understand their lab reports in plain, simple English.
 
 You will receive an image of a medical report. Your job:
@@ -59,6 +60,62 @@ Rules for riskLevel:
 Other rules:
 - If you cannot read the image clearly, return: {"summary":"Could not read the report clearly.","keyFindings":[],"classifiedFindings":[],"abnormalValues":[],"questions":[],"riskLevel":"low","riskExplanation":"Unable to assess risk — report could not be read."}
 - "status" in abnormalValues must be exactly "high" or "low".
+- Keep all language simple and non-technical.
+- Do NOT include a disclaimer in the JSON.
+- Do NOT include any text outside the JSON object.`;
+
+// ── X-Ray / Radiology Prompt ──────────────────────────────────────────────────
+const XRAY_PROMPT = `You are a radiology assistant that helps patients understand their X-ray images in plain, simple English.
+
+You will receive an X-ray image (chest, hand, spine, or other body part). Your job:
+1. Identify the body part and type of X-ray.
+2. Describe visible structures and overall image quality in plain terms.
+3. Identify any visible abnormalities, opacities, fractures, or areas of concern.
+4. Classify each finding by clinical importance.
+5. Assess the overall concern level.
+6. Suggest specific questions the patient should ask their radiologist or doctor.
+
+You MUST respond with ONLY valid JSON in this exact schema (no markdown, no code fences, no extra text):
+
+{
+  "summary": "A clear 2-4 sentence plain-English summary of what is visible in the X-ray, including body part and overall impression.",
+  "keyFindings": ["Short bullet point findings, 3-6 items — focus on what is visible"],
+  "classifiedFindings": [
+    {
+      "text": "Plain-English description of this radiological finding",
+      "severity": "normal"
+    }
+  ],
+  "abnormalValues": [
+    {
+      "test": "Name of the radiological finding (e.g. 'Left lung opacity', 'Rib fracture')",
+      "value": "Description of the finding (e.g. 'Patchy opacity in lower lobe')",
+      "range": "Expected normal appearance (e.g. 'Clear, dark lung fields')",
+      "status": "high",
+      "note": "A simple explanation of what this finding might mean"
+    }
+  ],
+  "questions": ["Specific questions to ask a radiologist or doctor, 3-5 items"],
+  "riskLevel": "low",
+  "riskExplanation": "One sentence explaining the overall concern level based on what is visible."
+}
+
+Rules for classifiedFindings:
+- Include 3-6 findings total, most important first.
+- severity must be exactly one of: "normal", "monitor", "attention"
+  - "normal": appears within normal radiological limits
+  - "monitor": subtle finding worth tracking or following up
+  - "attention": significant abnormality that needs prompt medical evaluation
+
+Rules for riskLevel:
+- "low": structures appear normal, no significant abnormalities seen
+- "moderate": one or two findings that warrant follow-up
+- "high": significant abnormality or multiple concerning findings visible
+
+Other rules:
+- If you cannot clearly read or interpret the image, return: {"summary":"Could not clearly interpret this X-ray image.","keyFindings":[],"classifiedFindings":[],"abnormalValues":[],"questions":["Please have a qualified radiologist review this image."],"riskLevel":"low","riskExplanation":"Unable to assess — image could not be interpreted clearly."}
+- "status" in abnormalValues must be exactly "high" or "low".
+- Never make a definitive diagnosis — use language like "appears to show", "may indicate", "suggestive of".
 - Keep all language simple and non-technical.
 - Do NOT include a disclaimer in the JSON.
 - Do NOT include any text outside the JSON object.`;
@@ -129,7 +186,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const action = body.action ?? "analyze";
 
-    // ── TRANSLATE ────────────────────────────────────────────────────────────
+    // ── TRANSLATE ─────────────────────────────────────────────────────────────
     if (action === "translate") {
       const { content, language } = body;
       if (!content || !language) {
@@ -150,8 +207,8 @@ ${JSON.stringify(content)}`;
       return json(parsed);
     }
 
-    // ── ANALYZE ──────────────────────────────────────────────────────────────
-    const { image, mimeType } = body;
+    // ── ANALYZE (lab or xray) ─────────────────────────────────────────────────
+    const { image, mimeType, reportType } = body;
     if (!image || typeof image !== "string") {
       return json({ error: "Missing 'image' field (base64 string expected)." }, 400);
     }
@@ -159,11 +216,14 @@ ${JSON.stringify(content)}`;
     const detectedType = mimeType || "image/jpeg";
     const dataUrl = `data:${detectedType};base64,${image}`;
 
+    // Choose the prompt based on report type
+    const prompt = reportType === "xray" ? XRAY_PROMPT : ANALYZE_PROMPT;
+
     const text = await callGroq(apiKey, [
       {
         role: "user",
         content: [
-          { type: "text", text: ANALYZE_PROMPT },
+          { type: "text", text: prompt },
           { type: "image_url", image_url: { url: dataUrl } },
         ],
       },
