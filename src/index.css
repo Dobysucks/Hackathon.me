@@ -15,7 +15,12 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f0f9ff;
+  background-color: #fdf2f8;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body {
+  background-color: #0f172a;
 }
 
 @keyframes fade-in-up {
@@ -72,9 +77,37 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #7dd3fc;
+  background: #f9a8d4;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #38bdf8;
+  background: #f472b6;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #831843;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #9d174d;
+}
+
+/* Term highlight + modal helpers */
+.term-highlight {
+  color: #be185d;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: #f9a8d4;
+  text-underline-offset: 2px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dark .term-highlight {
+  color: #f9a8d4;
+  text-decoration-color: #831843;
+}
+.term-highlight:hover {
+  color: #ec4899;
+}
+.dark .term-highlight:hover {
+  color: #f472b6;
 }

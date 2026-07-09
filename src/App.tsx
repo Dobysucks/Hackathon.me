@@ -20,6 +20,12 @@ import {
   ShieldCheck,
   ShieldX,
 } from 'lucide-react';
+import { useTheme } from './hooks/useTheme';
+import { ThemeToggle } from './components/ThemeToggle';
+import { AnnotatedText } from './components/AnnotatedText';
+import { TermModal } from './components/TermModal';
+import { SourcesSection } from './components/SourcesSection';
+import type { MedicalTerm } from './data/medicalTerms';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,37 +100,44 @@ function normalizeResult(data: Record<string, unknown>): AnalysisResult {
 
 function HealthRiskCard({ level, explanation }: { level: AnalysisResult['riskLevel']; explanation: string }) {
   const config = {
-    low:      { bg: 'bg-emerald-50', border: 'border-emerald-200', icon: ShieldCheck, iconColor: 'text-emerald-500', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', label: 'Low Risk' },
-    moderate: { bg: 'bg-amber-50',   border: 'border-amber-200',   icon: ShieldAlert, iconColor: 'text-amber-500',   badgeBg: 'bg-amber-100',   badgeText: 'text-amber-700',   label: 'Moderate Risk' },
-    high:     { bg: 'bg-red-50',     border: 'border-red-200',     icon: ShieldX,     iconColor: 'text-red-500',     badgeBg: 'bg-red-100',     badgeText: 'text-red-700',     label: 'High Risk' },
+    low:      { bg: 'bg-emerald-50 dark:bg-emerald-900/15', border: 'border-emerald-200 dark:border-emerald-800/40', icon: ShieldCheck, iconColor: 'text-emerald-500 dark:text-emerald-400', badgeBg: 'bg-emerald-100 dark:bg-emerald-900/40', badgeText: 'text-emerald-700 dark:text-emerald-300', label: 'Low Risk' },
+    moderate: { bg: 'bg-amber-50 dark:bg-amber-900/15',   border: 'border-amber-200 dark:border-amber-800/40',   icon: ShieldAlert, iconColor: 'text-amber-500 dark:text-amber-400',   badgeBg: 'bg-amber-100 dark:bg-amber-900/40',   badgeText: 'text-amber-700 dark:text-amber-300',   label: 'Moderate Risk' },
+    high:     { bg: 'bg-red-50 dark:bg-red-900/15',     border: 'border-red-200 dark:border-red-800/40',     icon: ShieldX,     iconColor: 'text-red-500 dark:text-red-400',     badgeBg: 'bg-red-100 dark:bg-red-900/40',     badgeText: 'text-red-700 dark:text-red-300',     label: 'High Risk' },
   }[level];
   const Icon = config.icon;
 
   return (
     <div className={`rounded-2xl border p-4 sm:p-5 animate-fade-in-up ${config.bg} ${config.border}`}>
       <div className="flex items-center gap-3 mb-2">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-white/70 ${config.iconColor}`}>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-white/70 dark:bg-slate-900/40 ${config.iconColor}`}>
           <Icon className="w-5 h-5" strokeWidth={2} />
         </div>
         <div>
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Health Risk</p>
+          <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Health Risk</p>
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-bold ${config.badgeBg} ${config.badgeText}`}>
             {config.label}
           </span>
         </div>
       </div>
       {explanation && (
-        <p className="text-sm text-slate-600 leading-relaxed pl-[52px]">{explanation}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed pl-[52px]">{explanation}</p>
       )}
     </div>
   );
 }
 
-function FindingCard({ finding, index }: { finding: ClassifiedFinding; index: number }) {
+function FindingCard({
+  finding, index, onTermClick, onTermsFound,
+}: {
+  finding: ClassifiedFinding;
+  index: number;
+  onTermClick: (term: MedicalTerm) => void;
+  onTermsFound?: (terms: MedicalTerm[]) => void;
+}) {
   const config = {
-    normal:    { dot: 'bg-emerald-400', bg: 'bg-emerald-50',  border: 'border-emerald-100', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700', label: 'Normal'  },
-    monitor:   { dot: 'bg-amber-400',   bg: 'bg-amber-50',   border: 'border-amber-100',   text: 'text-amber-700',   badge: 'bg-amber-100 text-amber-700',   label: 'Monitor'  },
-    attention: { dot: 'bg-red-400',     bg: 'bg-red-50',     border: 'border-red-100',     text: 'text-red-700',     badge: 'bg-red-100 text-red-700',     label: 'Attention'  },
+    normal:    { dot: 'bg-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/15',  border: 'border-emerald-100 dark:border-emerald-800/40', text: 'text-emerald-700', badge: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300', label: 'Normal'  },
+    monitor:   { dot: 'bg-amber-400',   bg: 'bg-amber-50 dark:bg-amber-900/15',   border: 'border-amber-100 dark:border-amber-800/40',   text: 'text-amber-700',   badge: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',   label: 'Monitor'  },
+    attention: { dot: 'bg-red-400',     bg: 'bg-red-50 dark:bg-red-900/15',     border: 'border-red-100 dark:border-red-800/40',     text: 'text-red-700',     badge: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',     label: 'Attention'  },
   }[finding.severity];
 
   return (
@@ -133,7 +146,9 @@ function FindingCard({ finding, index }: { finding: ClassifiedFinding; index: nu
       style={{ animationDelay: `${0.05 + index * 0.06}s` }}
     >
       <span className={`mt-1.5 shrink-0 w-2.5 h-2.5 rounded-full ${config.dot}`} />
-      <span className="flex-1 text-sm text-slate-700 leading-relaxed">{finding.text}</span>
+      <span className="flex-1 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+        <AnnotatedText text={finding.text} onTermClick={onTermClick} onTermsFound={onTermsFound} />
+      </span>
       <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${config.badge}`}>
         {config.label}
       </span>
@@ -151,9 +166,9 @@ function LanguageSelector({
   isTranslating: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2 p-3 rounded-2xl bg-white border border-sky-100 shadow-soft animate-fade-in-up">
+    <div className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-slate-800 border border-pink-100 dark:border-slate-700 shadow-soft animate-fade-in-up">
       <Globe className="w-4 h-4 text-brand-500 shrink-0" />
-      <span className="text-xs font-semibold text-slate-500 shrink-0">Language</span>
+      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Language</span>
       <div className="flex gap-1.5 ml-auto flex-wrap justify-end">
         {LANGUAGES.map(lang => (
           <button
@@ -163,7 +178,7 @@ function LanguageSelector({
             className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
               language === lang.code
                 ? 'bg-brand-500 text-white shadow-sm'
-                : 'bg-sky-50 text-slate-600 hover:bg-sky-100 disabled:opacity-50'
+                : 'bg-pink-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-pink-100 dark:hover:bg-slate-600 disabled:opacity-50'
             }`}
           >
             {lang.native}
@@ -192,6 +207,25 @@ export default function App() {
   const [translations, setTranslations] = useState<Partial<Record<Language, AnalysisResult>>>({});
   const [isTranslating, setIsTranslating] = useState(false);
   const [translateError, setTranslateError] = useState<string | null>(null);
+
+  const { theme, toggleTheme } = useTheme();
+  const [activeTerm, setActiveTerm] = useState<MedicalTerm | null>(null);
+  const [referencedTerms, setReferencedTerms] = useState<Map<string, MedicalTerm>>(new Map());
+
+  const collectTerms = useCallback((terms: MedicalTerm[]) => {
+    if (!terms.length) return;
+    setReferencedTerms(prev => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const t of terms) {
+        if (!next.has(t.term)) {
+          next.set(t.term, t);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -267,6 +301,7 @@ export default function App() {
       setResult(null);
       setTranslations({});
       setLanguage('en');
+      setReferencedTerms(new Map());
     };
     reader.readAsDataURL(file);
     setFileName(file.name);
@@ -291,6 +326,7 @@ export default function App() {
     setError(null);
     setTranslations({});
     setLanguage('en');
+    setReferencedTerms(new Map());
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -338,28 +374,31 @@ export default function App() {
   const reset = () => removeImage();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-sky-50">
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-white to-pink-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 transition-colors">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-lg border-b border-sky-100">
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/85 backdrop-blur-lg border-b border-pink-100 dark:border-slate-800">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-soft">
               <HeartPulse className="w-5 h-5 text-white" strokeWidth={2.5} />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-800 leading-none tracking-tight">MediExplain</h1>
-              <p className="text-[11px] text-slate-400 font-medium mt-0.5">Understand your report</p>
+              <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-none tracking-tight">MediExplain</h1>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">Understand your report</p>
             </div>
           </div>
-          {image && (
-            <button
-              onClick={reset}
-              className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-brand-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-sky-50"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Start over
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {image && (
+              <button
+                onClick={reset}
+                className="flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-pink-50 dark:hover:bg-slate-800"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span className="hidden sm:inline">Start over</span>
+              </button>
+            )}
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          </div>
         </div>
       </header>
 
@@ -368,15 +407,15 @@ export default function App() {
         {/* Hero */}
         {!image && (
           <div className="text-center mb-8 animate-fade-in-up">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-xs font-semibold mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 dark:bg-brand-900/30 border border-brand-100 dark:border-brand-800/50 text-brand-700 dark:text-brand-300 text-xs font-semibold mb-4">
               <Sparkles className="w-3.5 h-3.5" />
               AI-assisted report reading
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-tight mb-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2">
               Understand your medical report
               <br className="hidden sm:block" /> in plain language
             </h2>
-            <p className="text-slate-500 text-sm sm:text-base leading-relaxed max-w-md mx-auto">
+            <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base leading-relaxed max-w-md mx-auto">
               Upload a photo of your lab report and get a clear summary, flagged values, and questions to bring to your doctor.
             </p>
           </div>
@@ -392,17 +431,17 @@ export default function App() {
               onDragLeave={() => setIsDragging(false)}
               onDrop={onDrop}
               className={`w-full rounded-2xl border-2 border-dashed transition-all duration-300 p-8 sm:p-12 text-center group ${
-                isDragging ? 'border-brand-500 bg-brand-50 scale-[1.01]' : 'border-sky-200 bg-white hover:border-brand-400 hover:bg-sky-50/50'
+                isDragging ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 scale-[1.01]' : 'border-pink-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand-400 hover:bg-pink-50/50 dark:hover:bg-slate-800/70'
               }`}
             >
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-100 to-brand-200 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-300">
-                <Upload className="w-7 h-7 text-brand-600" strokeWidth={2} />
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-100 to-brand-200 dark:from-brand-900/50 dark:to-brand-800/50 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-300">
+                <Upload className="w-7 h-7 text-brand-600 dark:text-brand-300" strokeWidth={2} />
               </div>
-              <p className="text-base font-semibold text-slate-700 mb-1">Tap to upload your report</p>
-              <p className="text-sm text-slate-400">or drag and drop an image here</p>
-              <p className="text-xs text-slate-400 mt-3">JPG, PNG · up to 10 MB</p>
+              <p className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-1">Tap to upload your report</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500">or drag and drop an image here</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">JPG, PNG · up to 10 MB</p>
             </button>
-            {error && <p className="mt-3 text-sm text-red-600 text-center animate-fade-in">{error}</p>}
+            {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400 text-center animate-fade-in">{error}</p>}
 
             <div className="grid grid-cols-3 gap-3 mt-6">
               {[
@@ -412,11 +451,11 @@ export default function App() {
               ].map((b, i) => (
                 <div
                   key={i}
-                  className="flex flex-col items-center text-center gap-1.5 p-3 rounded-xl bg-white border border-sky-100 animate-fade-in-up"
+                  className="flex flex-col items-center text-center gap-1.5 p-3 rounded-xl bg-white dark:bg-slate-800 border border-pink-100 dark:border-slate-700 animate-fade-in-up"
                   style={{ animationDelay: `${0.2 + i * 0.08}s` }}
                 >
-                  <b.icon className="w-5 h-5 text-brand-500" strokeWidth={2} />
-                  <span className="text-[11px] font-medium text-slate-500 leading-tight">{b.label}</span>
+                  <b.icon className="w-5 h-5 text-brand-500 dark:text-brand-300" strokeWidth={2} />
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-tight">{b.label}</span>
                 </div>
               ))}
             </div>
@@ -426,7 +465,7 @@ export default function App() {
         {/* Preview + Analyze */}
         {image && !result && (
           <div className="animate-fade-in-up">
-            <div className="relative rounded-2xl overflow-hidden bg-white border border-sky-100 shadow-card">
+            <div className="relative rounded-2xl overflow-hidden bg-white dark:bg-slate-800 border border-pink-100 dark:border-slate-700 shadow-card">
               <button
                 onClick={removeImage}
                 className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
@@ -434,14 +473,14 @@ export default function App() {
               >
                 <X className="w-5 h-5" />
               </button>
-              <img src={image} alt="Medical report preview" className="w-full max-h-[420px] object-contain bg-slate-50" />
-              <div className="px-4 py-3 border-t border-sky-50 flex items-center gap-2">
-                <FileImage className="w-4 h-4 text-brand-500 shrink-0" />
-                <span className="text-sm text-slate-600 font-medium truncate">{fileName || 'Uploaded report'}</span>
+              <img src={image} alt="Medical report preview" className="w-full max-h-[420px] object-contain bg-slate-50 dark:bg-slate-900" />
+              <div className="px-4 py-3 border-t border-pink-50 dark:border-slate-700 flex items-center gap-2">
+                <FileImage className="w-4 h-4 text-brand-500 dark:text-brand-300 shrink-0" />
+                <span className="text-sm text-slate-600 dark:text-slate-300 font-medium truncate">{fileName || 'Uploaded report'}</span>
               </div>
             </div>
 
-            {error && <p className="mt-3 text-sm text-red-600 text-center animate-fade-in">{error}</p>}
+            {error && <p className="mt-3 text-sm text-red-600 dark:text-red-400 text-center animate-fade-in">{error}</p>}
 
             <button
               onClick={analyze}
@@ -468,22 +507,22 @@ export default function App() {
               <div className="mt-6 space-y-3 animate-fade-in">
                 {['Extracting text from image', 'Sending to AI for analysis', 'Identifying abnormal values', 'Preparing your summary'].map((step, i) => (
                   <div key={i} className="flex items-center gap-3 animate-fade-in" style={{ animationDelay: `${i * 0.4}s` }}>
-                    <div className="w-5 h-5 rounded-full bg-brand-100 flex items-center justify-center">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-brand-600" />
+                    <div className="w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-900/50 flex items-center justify-center">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-300" />
                     </div>
-                    <span className="text-sm text-slate-500">{step}</span>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">{step}</span>
                   </div>
                 ))}
               </div>
             )}
 
             {error && !isAnalyzing && (
-              <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-200 animate-fade-in">
+              <div className="mt-4 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 animate-fade-in">
                 <div className="flex items-start gap-2.5">
-                  <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-red-700">{error}</p>
-                    <button onClick={analyze} className="mt-2 text-sm font-semibold text-red-600 hover:text-red-700 underline underline-offset-2">
+                    <p className="text-sm font-medium text-red-700 dark:text-red-300">{error}</p>
+                    <button onClick={analyze} className="mt-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline underline-offset-2">
                       Try again
                     </button>
                   </div>
@@ -498,18 +537,18 @@ export default function App() {
           <div className="space-y-4">
 
             {/* Thumbnail + status row */}
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-sky-100 shadow-soft animate-fade-in-up">
-              <img src={image} alt="Report" className="w-14 h-14 rounded-lg object-cover border border-sky-100 shrink-0" />
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-slate-800 border border-pink-100 dark:border-slate-700 shadow-soft animate-fade-in-up">
+              <img src={image} alt="Report" className="w-14 h-14 rounded-lg object-cover border border-pink-100 dark:border-slate-700 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-700 truncate">{fileName || 'Your report'}</p>
-                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1 mt-0.5">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{fileName || 'Your report'}</p>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 mt-0.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Analysis complete
                 </p>
               </div>
               <button
                 onClick={reset}
-                className="text-sm font-medium text-brand-600 hover:text-brand-700 px-3 py-2 rounded-lg hover:bg-sky-50 transition-colors flex items-center gap-1.5 shrink-0"
+                className="text-sm font-medium text-brand-600 dark:text-brand-300 hover:text-brand-700 dark:hover:text-brand-200 px-3 py-2 rounded-lg hover:bg-pink-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 shrink-0"
               >
                 <RotateCcw className="w-4 h-4" />
                 <span className="hidden sm:inline">New report</span>
@@ -520,7 +559,7 @@ export default function App() {
             <LanguageSelector language={language} onChange={setLanguage} isTranslating={isTranslating} />
 
             {translateError && (
-              <p className="text-xs text-red-500 text-center animate-fade-in">{translateError}</p>
+              <p className="text-xs text-red-500 dark:text-red-400 text-center animate-fade-in">{translateError}</p>
             )}
 
             {/* Health Risk */}
@@ -535,7 +574,7 @@ export default function App() {
                     const n = displayResult.classifiedFindings.filter(f => f.severity === s).length;
                     if (n === 0) return null;
                     return (
-                      <span key={s} className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                      <span key={s} className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
                         {counts[s]} · {n}
                       </span>
                     );
@@ -543,7 +582,7 @@ export default function App() {
                 </div>
                 <div className="space-y-2">
                   {displayResult.classifiedFindings.map((f, i) => (
-                    <FindingCard key={i} finding={f} index={i} />
+                    <FindingCard key={i} finding={f} index={i} onTermClick={setActiveTerm} onTermsFound={collectTerms} />
                   ))}
                 </div>
               </Section>
@@ -551,16 +590,18 @@ export default function App() {
 
             {/* Report Summary */}
             <Section icon={<ClipboardList className="w-5 h-5" />} title="Report Summary" number="2" delay={0.08}>
-              <p className="text-sm text-slate-600 leading-relaxed">{displayResult.summary}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                <AnnotatedText text={displayResult.summary} onTermClick={setActiveTerm} onTermsFound={collectTerms} />
+              </p>
             </Section>
 
             {/* Abnormal Values */}
             <Section icon={<Activity className="w-5 h-5" />} title="Abnormal Values" number="3" delay={0.11}>
               <div className="space-y-3">
                 {displayResult.abnormalValues.length === 0 && (
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-                    <p className="text-sm text-emerald-700 font-medium">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/40">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+                    <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
                       No abnormal values detected. All results appear within normal ranges.
                     </p>
                   </div>
@@ -568,28 +609,30 @@ export default function App() {
                 {displayResult.abnormalValues.map((v, i) => (
                   <div
                     key={i}
-                    className="rounded-xl border p-3.5 animate-fade-in-up"
-                    style={{
-                      animationDelay: `${0.13 + i * 0.06}s`,
-                      borderColor: v.status === 'high' ? '#fecaca' : '#bae6fd',
-                      backgroundColor: v.status === 'high' ? '#fef2f2' : '#f0f9ff',
-                    }}
+                    className={`rounded-xl border p-3.5 animate-fade-in-up ${
+                      v.status === 'high'
+                        ? 'border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/15'
+                        : 'border-pink-200 dark:border-slate-700 bg-pink-50 dark:bg-slate-800/60'
+                    }`}
+                    style={{ animationDelay: `${0.13 + i * 0.06}s` }}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-800">{v.test}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">Normal range: {v.range}</p>
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{v.test}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Normal range: {v.range}</p>
                       </div>
                       <span
                         className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          v.status === 'high' ? 'bg-red-100 text-red-700' : 'bg-sky-100 text-sky-700'
+                          v.status === 'high' ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300' : 'bg-pink-100 dark:bg-slate-700 text-pink-700 dark:text-pink-300'
                         }`}
                       >
                         {v.status === 'high' ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                         {v.value}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">{v.note}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                      <AnnotatedText text={v.note} onTermClick={setActiveTerm} onTermsFound={collectTerms} />
+                    </p>
                   </div>
                 ))}
               </div>
@@ -597,18 +640,18 @@ export default function App() {
 
             {/* Questions */}
             <Section icon={<HelpCircle className="w-5 h-5" />} title="Questions to Ask Your Doctor" number="4" delay={0.14}>
-              <p className="text-sm text-slate-500 mb-3">Bring these questions to your next appointment.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Bring these questions to your next appointment.</p>
               <div className="space-y-2.5">
                 {displayResult.questions.map((q, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-3 p-3 rounded-xl bg-brand-50/60 border border-brand-100 animate-fade-in-up"
+                    className="flex items-start gap-3 p-3 rounded-xl bg-brand-50/60 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800/40 animate-fade-in-up"
                     style={{ animationDelay: `${0.16 + i * 0.06}s` }}
                   >
                     <span className="shrink-0 w-6 h-6 rounded-full bg-brand-500 text-white text-xs font-bold flex items-center justify-center">
                       {i + 1}
                     </span>
-                    <span className="text-sm text-slate-700 leading-relaxed">{q}</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{q}</span>
                   </div>
                 ))}
               </div>
@@ -617,29 +660,32 @@ export default function App() {
             {/* Disclaimer */}
             <Section icon={<ShieldAlert className="w-5 h-5" />} title="Disclaimer" number="5" delay={0.17} accent="amber">
               <div className="flex gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-2">
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    <strong className="text-slate-800">This is not a medical diagnosis. Please consult a healthcare professional.</strong>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <strong className="text-slate-800 dark:text-slate-100">This is not a medical diagnosis. Please consult a healthcare professional.</strong>
                   </p>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    MediExplain is an informational tool and <strong className="text-slate-700">not a medical device</strong>. It does not diagnose, treat, or replace professional medical advice.
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    MediExplain is an informational tool and <strong className="text-slate-700 dark:text-slate-200">not a medical device</strong>. It does not diagnose, treat, or replace professional medical advice.
                   </p>
-                  <p className="text-sm text-slate-600 leading-relaxed">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                     The analysis is generated by AI for educational purposes and may contain errors. Always consult a licensed healthcare provider before making decisions about your health.
                   </p>
-                  <p className="text-xs text-slate-400 pt-1">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 pt-1">
                     By using this tool you acknowledge that the output is not a substitute for professional medical evaluation.
                   </p>
                 </div>
               </div>
             </Section>
 
+            {/* Sources */}
+            <SourcesSection terms={Array.from(referencedTerms.values())} />
+
             {/* CTA */}
             <div className="pt-2 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
               <button
                 onClick={reset}
-                className="w-full py-3.5 rounded-2xl border-2 border-brand-200 text-brand-700 font-semibold flex items-center justify-center gap-2 hover:bg-brand-50 transition-colors"
+                className="w-full py-3.5 rounded-2xl border-2 border-brand-200 dark:border-brand-800/50 text-brand-700 dark:text-brand-300 font-semibold flex items-center justify-center gap-2 hover:bg-brand-50 dark:hover:bg-brand-900/20 transition-colors"
               >
                 Analyze another report
                 <ArrowRight className="w-4 h-4" />
@@ -650,17 +696,19 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-sky-100 bg-white/60">
+      <footer className="border-t border-pink-100 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <HeartPulse className="w-4 h-4 text-brand-500" />
-            <span className="text-sm font-semibold text-slate-600">MediExplain</span>
+            <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">MediExplain</span>
           </div>
-          <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs text-slate-400 dark:text-slate-500 max-w-md mx-auto leading-relaxed">
             This is not a medical diagnosis. Please consult a healthcare professional.
           </p>
         </div>
       </footer>
+
+      {activeTerm && <TermModal term={activeTerm} onClose={() => setActiveTerm(null)} />}
     </div>
   );
 }
@@ -677,8 +725,12 @@ function Section({
   delay?: number;
   accent?: 'brand' | 'amber';
 }) {
-  const accentClasses = accent === 'amber' ? 'bg-amber-50 border-amber-100' : 'bg-white border-sky-100';
-  const iconBg = accent === 'amber' ? 'bg-amber-100 text-amber-600' : 'bg-brand-100 text-brand-600';
+  const accentClasses = accent === 'amber'
+    ? 'bg-amber-50 dark:bg-amber-900/15 border-amber-100 dark:border-amber-800/40'
+    : 'bg-white dark:bg-slate-800 border-pink-100 dark:border-slate-700';
+  const iconBg = accent === 'amber'
+    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
+    : 'bg-brand-100 dark:bg-brand-900/50 text-brand-600 dark:text-brand-300';
 
   return (
     <section
@@ -688,8 +740,8 @@ function Section({
       <div className="flex items-center gap-3 mb-4">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>{icon}</div>
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-bold text-slate-300 shrink-0">{number}</span>
-          <h3 className="text-base font-bold text-slate-800 truncate">{title}</h3>
+          <span className="text-xs font-bold text-slate-300 dark:text-slate-600 shrink-0">{number}</span>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">{title}</h3>
         </div>
       </div>
       {children}
